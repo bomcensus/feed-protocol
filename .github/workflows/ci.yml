@@ -1,0 +1,36 @@
+# Copyright (C) 2026 JC-Lab
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: go (vet, test, license)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: gofmt
+        run: |
+          out=$(git ls-files -z '*.go' | xargs -0 gofmt -l)
+          [ -z "$out" ] || { echo "::error::not gofmt-ed:"; echo "$out"; exit 1; }
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: License headers
+        run: go run ./tools/licensehdr .
